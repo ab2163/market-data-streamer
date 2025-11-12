@@ -31,12 +31,21 @@ int main(int argc, char *argv[]){
         cout << "Connected to client.\n";
 
         //send over all messages from databento file
+        const size_t BATCH_SIZE = 500;
+        std::vector<MboMsg> buffer;
+        buffer.reserve(BATCH_SIZE);
+        size_t count = 0;
         const Record *record;
+
         while(record = file_store.NextRecord()){
             const auto& mbo_msg = record->Get<MboMsg>();
-            const MboMsg *msg_ptr = addressof(mbo_msg);
-            send_frame(client_sock, static_cast<const void*>(msg_ptr), 56);
+            buffer.push_back(mbo_msg);
+            if(buffer.size() == BATCH_SIZE){
+                send_frame(client_sock, buffer.data(), buffer.size()*sizeof(MboMsg));
+                buffer.clear();  //reset buffer size to 0
+            }
         }
+        if(buffer.size()) send_frame(client_sock, buffer.data(), buffer.size()*sizeof(MboMsg));
 
         ::shutdown(client_sock, SHUT_WR);
         ::close(client_sock);

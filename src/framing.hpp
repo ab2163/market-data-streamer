@@ -41,12 +41,16 @@ inline void send_frame(int file_desc, const void *data, uint32_t len){
 }
 
 //receive data as length-prefixed frame
-inline bool recv_frame(int file_desc, void *buf){
+inline bool recv_frame(int file_desc, void *buf, uint32_t& bytes_recv){
     uint32_t len_LE = 0;
     if(!read_n(file_desc, &len_LE, sizeof(len_LE))) return false;;
     uint32_t len = le32toh(len_LE);
     if(len > (64u << 20)) //64 MiB sanity cap
         throw std::runtime_error("Frame too large");
-    if(len) return read_n(file_desc, buf, len);
+    if(len){
+        bool success = read_n(file_desc, buf, len);
+        if(success) bytes_recv = len;
+        return success;
+    }
     else return false;
 }

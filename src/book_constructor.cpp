@@ -11,23 +11,26 @@ using namespace databento;
 
 int main(void){
     try{
+        //connect to server
         int socket_desc = connect_to("127.0.0.1", 9000);
-        MboMsg *msg = new MboMsg;
+
+        //buffer for receiving data from server
+        const size_t BATCH_SIZE = 500;
+        vector<MboMsg> buffer(BATCH_SIZE);
+        uint32_t bytes_recv = 0;
 
         int msg_cnt = 0;
         auto start = chrono::high_resolution_clock::now();
-        while(recv_frame(socket_desc, static_cast<void*>(msg))){
-            //actions on messages here
-            msg_cnt++;
-            /*
-            if(!(msg_cnt % 10000)){
-                cout << "Message details:\n";
-                cout << "Price: " << msg->price << endl;
-                cout << "Size: " << msg->size << endl;
-                cout << "Action: " << msg->action << endl << endl;
+
+        while(recv_frame(socket_desc, buffer.data(), bytes_recv)){
+            size_t num_msgs = bytes_recv / sizeof(MboMsg);
+
+            for(size_t i = 0; i < num_msgs; i++){
+                //actions on messages here
+                msg_cnt++;
             }
-                */
         }
+
         auto end = chrono::high_resolution_clock::now();
         auto duration = chrono::duration_cast<std::chrono::microseconds>(end - start);
         cout << "Time taken: " << duration.count() << " microseconds\n";
