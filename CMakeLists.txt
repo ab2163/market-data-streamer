@@ -9,6 +9,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(databento)
 
-add_executable(replay src/main.cpp)
+add_executable(replay src/data_streamer.cpp)
 target_link_libraries(replay PRIVATE databento::databento)
 

@@ -1,8 +1,11 @@
+#include "server.hpp"
+
 #include "tcp_common.hpp"
 #include "framing.hpp"
+
 #include <iostream>
 
-static int listen_on(uint16_t port){
+int listen_on(uint16_t port){
     int socket_desc = ::socket(AF_INET, SOCK_STREAM, 0);
     if(socket_desc < 0) throw std::system_error(errno, std::generic_category(), "Error creating socket");
 
@@ -22,7 +25,7 @@ static int listen_on(uint16_t port){
     return socket_desc;
 }
 
-static void set_socket_opts(int file_desc){
+void set_socket_opts(int file_desc){
     int one = 1;
     ::setsockopt(file_desc, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)); //disable Nagle algorithm (batching packets)
     ::setsockopt(file_desc, SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one)); //keepalive messages sent when connection idle
@@ -30,30 +33,4 @@ static void set_socket_opts(int file_desc){
     timeval tv{.tv_sec = 10, .tv_usec = 0};
     ::setsockopt(file_desc, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     ::setsockopt(file_desc, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
-}
-
-int main(){
-    try{
-        int listen_sock = listen_on(9000);
-        std::cout << "Server listening on: 9000\n";
-
-        sockaddr_in peer{}; socklen_t plen = sizeof(peer); //IP and port information of peer
-        int client_sock = ::accept(listen_sock, (sockaddr*)&peer, &plen); //blocks until client connects
-        if(client_sock < 0) throw std::system_error(errno, std::generic_category(), "Error accepting TCP connection");
-
-        set_socket_opts(client_sock);
-
-        //example loop: echo any frame back uppercased
-        while(true){
-            std::string frame = recv_frame(client_sock);
-            for(char& c : frame) c = std::toupper(static_cast<unsigned char>(c));
-            send_frame(client_sock, frame.data(), static_cast<uint32_t>(frame.size()));
-        }
-
-        ::close(client_sock);
-        ::close(listen_sock);
-    }catch(const std::exception& e){
-        std::cerr << "Server error: " << e.what() << "\n";
-        return 1;
-    }
 }

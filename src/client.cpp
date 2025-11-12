@@ -1,9 +1,12 @@
+#include "client.hpp"
+
 #include "tcp_common.hpp"
 #include "framing.hpp"
+
 #include <iostream>
 
 //creates TCP socket and connects to remote host
-static int connect_to(const char *host, uint16_t port){
+int connect_to(const char *host, uint16_t port){
     int socket_desc = ::socket(AF_INET, SOCK_STREAM, 0);
     if(socket_desc < 0) throw std::system_error(errno, std::generic_category(), "Error creating socket");
 
@@ -18,21 +21,4 @@ static int connect_to(const char *host, uint16_t port){
     int one = 1;
     ::setsockopt(socket_desc, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)); //disable Nagle algorithm
     return socket_desc;
-}
-
-int main(){
-    try{
-        int socket_desc = connect_to("127.0.0.1", 9000);
-        std::string msg = "hello tcp world";
-        send_frame(socket_desc, msg.data(), static_cast<uint32_t>(msg.size()));
-
-        std::string reply = recv_frame(socket_desc);
-        std::cout << "Server replied: " << reply << "\n";
-
-        ::shutdown(socket_desc, SHUT_RDWR); //stop sending and receiving
-        ::close(socket_desc); //closes the file descriptor
-    }catch(const std::exception& e){
-        std::cerr << "Client error: " << e.what() << "\n";
-        return 1;
-    }
 }
