@@ -17,7 +17,7 @@ inline void write_n(int file_desc, const void *buf, size_t n){
 }
 
 //read n bytes over the connection
-inline void read_n(int file_desc, void* buf, size_t n){
+inline bool read_n(int file_desc, void* buf, size_t n){
     uint8_t* p = static_cast<uint8_t*>(buf);
     size_t bytes_recv = 0;
     while(bytes_recv < n){
@@ -26,9 +26,10 @@ inline void read_n(int file_desc, void* buf, size_t n){
             if (errno == EINTR) continue;
             throw std::system_error(errno, std::generic_category(), "Error in receiving over TCP");
         }
-        if (return_code == 0) throw std::runtime_error("Error: connection closed by peer");
+        if(return_code == 0) return false;
         bytes_recv += static_cast<size_t>(return_code);
     }
+    return true;
 }
 
 //send data as length-prefixed frame: [u32 length_le][payload bytes]
@@ -40,13 +41,12 @@ inline void send_frame(int file_desc, const void *data, uint32_t len){
 }
 
 //receive data as length-prefixed frame
-inline std::string recv_frame(int file_desc){
+inline bool recv_frame(int file_desc, void *buf){
     uint32_t len_LE = 0;
-    read_n(file_desc, &len_LE, sizeof(len_LE));
+    if(!read_n(file_desc, &len_LE, sizeof(len_LE))) return false;;
     uint32_t len = le32toh(len_LE);
     if(len > (64u << 20)) //64 MiB sanity cap
         throw std::runtime_error("Frame too large");
-    std::string payload(len, '\0');
-    if(len) read_n(file_desc, payload.data(), len);
-    return payload;
+    if(len) return read_n(file_desc, buf, len);
+    else return false;
 }

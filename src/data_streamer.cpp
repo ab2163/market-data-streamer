@@ -22,35 +22,29 @@ int main(int argc, char *argv[]){
     try{
         //wait for client connection
         int listen_sock = listen_on(9000);
-        std::cout << "Server listening on: 9000\n";
+        cout << "Server listening on: 9000\n";
 
         sockaddr_in peer{}; socklen_t plen = sizeof(peer); //IP and port information of peer
         int client_sock = ::accept(listen_sock, (sockaddr*)&peer, &plen); //blocks until client connects
-        if(client_sock < 0) throw std::system_error(errno, std::generic_category(), "Error accepting TCP connection");
+        if(client_sock < 0) throw system_error(errno, generic_category(), "Error accepting TCP connection");
         set_socket_opts(client_sock);
+        cout << "Connected to client.\n";
 
         //send over all messages from databento file
         const Record *record;
         while(record = file_store.NextRecord()){
-            send_frame(client_sock, static_cast<const void*>(record), 56);
+            const auto& mbo_msg = record->Get<MboMsg>();
+            const MboMsg *msg_ptr = addressof(mbo_msg);
+            send_frame(client_sock, static_cast<const void*>(msg_ptr), 56);
         }
 
+        ::shutdown(client_sock, SHUT_WR);
         ::close(client_sock);
         ::close(listen_sock);
-    }catch(const std::exception& e){
-        std::cerr << "Server error: " << e.what() << "\n";
+    }catch(const exception& e){
+        cerr << "Server error: " << e.what() << "\n";
         return 1;
     }
-
-    /*
-    cout << file_store.GetMetadata() << '\n';
-    const Record *record = file_store.NextRecord();
-    cout << "Size: " << record->Size() << endl;
-    const auto& mbo_msg = record->Get<MboMsg>();
-    cout << "Price: " << mbo_msg.price << endl;
-    cout << "Size: " << mbo_msg.size << endl;
-    cout << sizeof(mbo_msg) << endl;
-    */
 
     return 0;
 }
