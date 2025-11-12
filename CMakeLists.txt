@@ -5,10 +5,10 @@ include(FetchContent)
 FetchContent_Declare(
     databento
     GIT_REPOSITORY https://github.com/databento/databento-cpp
-    GIT_TAG        main
+    GIT_TAG main
 )
 FetchContent_MakeAvailable(databento)
 
-add_executable(replay main.cpp)
+add_executable(replay src/main.cpp)
 target_link_libraries(replay PRIVATE databento::databento)
 

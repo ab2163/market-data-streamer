@@ -1,1 +1,4 @@
 personal-notes.txt
+build/
+src/server
+src/client
