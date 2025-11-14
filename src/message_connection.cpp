@@ -97,4 +97,5 @@ bool MessageConnection::recv_onto_queue(){
     lock_guard<mutex> lock(from_mutex);
     if(from_server.size() + num_msgs > MAX_QUEUE_SIZE) return false; //dump messages if not enough space
     from_server.insert(from_server.end(), recv_buffer.begin(), recv_buffer.begin() + num_msgs);
+    return true;
 }

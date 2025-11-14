@@ -1,6 +1,5 @@
 #include "socket.hpp"
-
-#include <unistd.h>
+#include "tcp_common.hpp"
 
 using namespace std;
 
@@ -29,7 +28,7 @@ void Socket::listen(){
     ::setsockopt(socket_desc, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)); //enable quick rebinding after restarting
 }
 
-void Socket::void connect(const char *host, uint16_t port){
+void Socket::connect(const char *host, uint16_t port){
     sockaddr_in addr{}; addr.sin_family = AF_INET; //connecting to IPv4 address
     addr.sin_port = htons(port); //convert destination port number to big-endian and store
     if(::inet_pton(AF_INET, host, &addr.sin_addr) != 1) //checks valid IP address
@@ -37,14 +36,14 @@ void Socket::void connect(const char *host, uint16_t port){
 
     if(::connect(socket_desc, (sockaddr*)&addr, sizeof(addr)) < 0) //perform 3-way TCP handshake (uses ephemeral port number)
         throw std::system_error(errno, std::generic_category(), "Error connecting to server");
-    configure(Role::Client)
+    configure(Role::Client);
 }
 
 void Socket::configure(Role socket_role){
     int one = 1;
-    ::setsockopt(file_desc, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)); //disable Nagle algorithm (batching packets)
-    ::setsockopt(file_desc, SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one)); //keepalive messages sent when connection idle
-    if(Role == Role::Server){
+    ::setsockopt(socket_desc, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)); //disable Nagle algorithm (batching packets)
+    ::setsockopt(socket_desc, SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one)); //keepalive messages sent when connection idle
+    if(socket_role == Role::Server){
         timeval send_tv{.tv_sec = 2, .tv_usec = 0};
         ::setsockopt(socket_desc, SOL_SOCKET, SO_SNDTIMEO, &send_tv, sizeof(send_tv));
         timeval recv_tv{.tv_sec = 30, .tv_usec = 0};

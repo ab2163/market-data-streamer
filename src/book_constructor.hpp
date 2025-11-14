@@ -5,7 +5,10 @@
 
 #include <databento/historical.hpp>
 
+using namespace databento;
+
 class BookConstructor{
+public:
     Client client;
     BookConstructor();
     void build_order_book();

@@ -2,20 +2,6 @@
 #define SERVER_HPP
 
 #include "message_connection.hpp"
-
-#include <cstdint>
-
-int listen_on(uint16_t port);
-void set_socket_opts(int file_desc);
-
-#endif //SERVER_HPP
-
-/*--------------------------------------------------------------------------------------------------------------*/
-
-#ifndef SERVER_HPP
-#define SERVER_HPP
-
-#include "message_connection.hpp"
 #include "thread_pool.hpp"
 
 #include <vector>
@@ -25,12 +11,15 @@ void set_socket_opts(int file_desc);
 #include <databento/historical.hpp>
 
 using namespace std;
+using namespace databento;
 
 class Server{
+public:
     int num_threads;
     ThreadPool thread_pool;
     MessageConnection listen_conn;
-    vector<MessageConnection> mssg_conns;
+    //vector<MessageConnection> mssg_conns;
+    vector<unique_ptr<MessageConnection>> mssg_conns;
     thread accept_thread;
     atomic<bool> running;
     Server();

@@ -8,7 +8,7 @@ enum class Role{
     Server
 };
 
-Class Socket{
+class Socket{
 public:
     int socket_desc;
     Socket();

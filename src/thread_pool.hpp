@@ -8,6 +8,7 @@
 #include <functional>
 #include <vector>
 #include <atomic>
+#include <iostream>
 
 using namespace std;
 
@@ -18,7 +19,7 @@ private:
     //queue of work items (any callable)
     queue<function<void()>> task_queue;
     //synchronization
-    mutex queue_mutex;
+    mutable mutex queue_mutex;
     condition_variable condition;
     atomic<bool> stop_flag{false};
     
@@ -29,6 +30,7 @@ public:
     ~ThreadPool();
     int pending_tasks();
     void enqueue(function<void()> task);
+    int pending_tasks() const;
 };
 
 #endif //THREAD_POOL

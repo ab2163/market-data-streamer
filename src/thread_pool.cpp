@@ -16,7 +16,7 @@ void ThreadPool::worker_function(){
                 
             //exit if stopping and no more tasks
             if(stop_flag && task_queue.empty()){
-                    eturn;
+                    return;
             }
                 
             //get task from queue
