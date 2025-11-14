@@ -28,7 +28,6 @@ private:
 public:
     ThreadPool(int num_threads);
     ~ThreadPool();
-    int pending_tasks();
     void enqueue(function<void()> task);
     int pending_tasks() const;
 };

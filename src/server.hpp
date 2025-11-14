@@ -18,7 +18,6 @@ public:
     int num_threads;
     ThreadPool thread_pool;
     MessageConnection listen_conn;
-    //vector<MessageConnection> mssg_conns;
     vector<unique_ptr<MessageConnection>> mssg_conns;
     thread accept_thread;
     atomic<bool> running;
