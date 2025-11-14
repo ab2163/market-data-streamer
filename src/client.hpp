@@ -14,10 +14,17 @@ int connect_to(const char *host, uint16_t port);
 #ifndef CLIENT_HPP
 #define CLIENT_HPP
 
+#include "message_connection.hpp"
+
+#include <cstdint>
+
 class Client{
     MessageConnection msg_conn;
-    connect_to(const char *host, uint16_t port);
-    queue<MboMsg> from_sever;
+    void connect_to(const char *host, uint16_t port);
+    bool receive_messages();
+    void process_messages(F&& fn){
+        msg_conn.process_messages(fn);
+    }
 };
 
 #endif //CLIENT_HPP

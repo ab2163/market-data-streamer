@@ -1,12 +1,15 @@
 #ifndef SOCKET
 #define SOCKET
 
+#include <cstdint>
+
 enum class Role{
     Client,
     Server
 };
 
 Class Socket{
+public:
     int socket_desc;
     Socket();
     ~Socket();

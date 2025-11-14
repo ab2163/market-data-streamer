@@ -9,6 +9,12 @@ MessageConnection::MessageConnection(){
     recv_buffer.reserve(BATCH_SIZE);
 }
 
+MessageConnection::MessageConnection(int socket_desc){
+    send_buffer.reserve(BATCH_SIZE);
+    recv_buffer.reserve(BATCH_SIZE);
+    socket.socket_desc = socket_desc;
+}
+
 //function which writes n bytes over the connection
 void MessageConnection::write_n(int file_desc, const void *buf, size_t n){
     const uint8_t *p = static_cast<const uint8_t*>(buf);
@@ -65,6 +71,7 @@ bool MessageConnection::recv_frame(int file_desc, void *buf, uint32_t& bytes_rec
 
 //pushes messages onto queue for client
 bool MessageConnection::push_onto_queue(vector<MboMsg> &messages){
+    lock_guard<mutex> lock(to_mutex);
     if(to_send.size() + messages.size() > MAX_QUEUE_SIZE) return false; //dump messages if not enough space
     to_send.insert(to_send.end(), messages.begin(), messages.end());
     return true;
@@ -72,9 +79,22 @@ bool MessageConnection::push_onto_queue(vector<MboMsg> &messages){
 
 //sends a batch of messages from queue
 void MessageConnection::send_messages(){
-    if(to_send.empty()) return; //early exit on empty queue
-    int mssg_cnt = min(BATCH_SIZE, to_send.size());
-    send_buffer.assign(to_send.begin(), to_send.begin() + mssg_cnt);
-    to_send.erase(to_send.begin(), to_send.begin() + mssg_cnt);
+    {
+        lock_guard<mutex> lock(to_mutex);
+        if(to_send.empty()) return; //early exit on empty queue
+        int mssg_cnt = min(BATCH_SIZE, to_send.size());
+        send_buffer.assign(to_send.begin(), to_send.begin() + mssg_cnt);
+        to_send.erase(to_send.begin(), to_send.begin() + mssg_cnt);
+    }
     send_frame(socket.socket_desc, send_buffer.data(), send_buffer.size()*sizeof(MboMsg));
+}
+
+//gets messages from receive buffer and pushes onto queue if possible
+bool MessageConnection::recv_onto_queue(){
+    uint32_t bytes_recv = 0;
+    if(!recv_frame(socket.socket_desc, recv_buffer.data(), bytes_recv)) return false;
+    size_t num_msgs = bytes_recv / sizeof(MboMsg);
+    lock_guard<mutex> lock(from_mutex);
+    if(from_server.size() + num_msgs > MAX_QUEUE_SIZE) return false; //dump messages if not enough space
+    from_server.insert(from_server.end(), recv_buffer.begin(), recv_buffer.begin() + num_msgs);
 }

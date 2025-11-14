@@ -57,3 +57,32 @@ int main(int argc, char *argv[]){
 
     return 0;
 }
+
+/*--------------------------------------------------------------------------------------------------------------*/
+#include "data_streamer.hpp"
+#include "server.hpp"
+
+#include <string>
+#include <vector>
+
+#include <databento/historical.hpp>
+
+using namespace std;
+
+DataStreamer::DataStreamer(string filepath){
+    file_store = DbnFileStore(filepath);
+    server.start_listening();
+}
+
+void DataStreamer::stream_messages(){
+    vector<Record> stream_batch;
+    stream_batch.reserve(BATCH_SIZE);
+    while(const Record *record = file_store.NextRecord()){
+        stream_batch.push_back(*record);
+        if(stream_batch.size() == BATCH_SIZE){
+            server.broadcast(stream_batch);
+            stream_batch.clear();
+        }
+    }
+    if(!stream_batch.empty()) server.broadcast(stream_batch);
+}

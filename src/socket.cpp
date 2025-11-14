@@ -25,7 +25,8 @@ void Socket::bind(uint16_t port){
 void Socket::listen(){
     if(::listen(socket_desc, 128) < 0) //socket is passive (listening) with up to 128 pending connections
         throw system_error(errno, generic_category(), "Error converting socket to listener");
-    configure(Role::Server);
+    int yes = 1;
+    ::setsockopt(socket_desc, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)); //enable quick rebinding after restarting
 }
 
 void Socket::void connect(const char *host, uint16_t port){
