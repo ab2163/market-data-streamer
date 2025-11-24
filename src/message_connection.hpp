@@ -23,8 +23,9 @@ public:
     mutex to_mutex;
     mutex from_mutex;
     Socket socket;
+    Server &server;
     MessageConnection();
-    MessageConnection(int socket_desc);
+    MessageConnection(int socket_desc, Server &server);
     void write_n(int file_desc, const void *buf, size_t n);
     bool read_n(int file_desc, void* buf, size_t n);
     void send_frame(int file_desc, const void *data, uint32_t len);

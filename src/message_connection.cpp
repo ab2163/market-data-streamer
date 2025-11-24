@@ -9,7 +9,7 @@ MessageConnection::MessageConnection(){
     recv_buffer.reserve(BATCH_SIZE);
 }
 
-MessageConnection::MessageConnection(int socket_desc){
+MessageConnection::MessageConnection(int socket_desc, Server &server) : server(server){
     send_buffer.reserve(BATCH_SIZE);
     recv_buffer.reserve(BATCH_SIZE);
     socket.socket_desc = socket_desc;
@@ -78,7 +78,7 @@ bool MessageConnection::push_onto_queue(vector<MboMsg> &messages){
 }
 
 //sends a batch of messages from queue
-void MessageConnection::send_messages(){
+void MessageConnection::send_messages(bool last){
     {
         lock_guard<mutex> lock(to_mutex);
         if(to_send.empty()) return; //early exit on empty queue
@@ -87,6 +87,7 @@ void MessageConnection::send_messages(){
         to_send.erase(to_send.begin(), to_send.begin() + mssg_cnt);
     }
     send_frame(socket.socket_desc, send_buffer.data(), send_buffer.size()*sizeof(MboMsg));
+    if(last) server.connection_finished();
 }
 
 //gets messages from receive buffer and pushes onto queue if possible

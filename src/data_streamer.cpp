@@ -20,9 +20,10 @@ void DataStreamer::stream_messages(){
         const auto& mbo_msg = record->Get<MboMsg>();
         stream_batch.push_back(mbo_msg);
         if(stream_batch.size() == BATCH_SIZE){
-            server.broadcast(stream_batch);
+            server.broadcast(stream_batch, false);
             stream_batch.clear();
         }
     }
-    if(!stream_batch.empty()) server.broadcast(stream_batch);
+    server.broadcast(stream_batch, true);
+    server.wait_to_finish();
 }

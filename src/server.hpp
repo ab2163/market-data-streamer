@@ -21,11 +21,17 @@ public:
     vector<unique_ptr<MessageConnection>> mssg_conns;
     thread accept_thread;
     atomic<bool> running;
+    atomic<int> num_conns;
+    condition_variable finished_cv;
+    mutex finished_mutex;
+    bool finished_sending;
     Server();
     ~Server();
     void start_listening();
     void stop_listening();
     void broadcast(vector<MboMsg> &messages);
+    void connection_finished();
+    void wait_to_finish();
 };
 
 #endif //SERVER_HPP
