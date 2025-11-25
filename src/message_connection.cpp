@@ -84,7 +84,10 @@ void MessageConnection::send_messages(bool last){
     lock_guard<mutex> send_lock(send_mutex); //only one thread at a time
     {
         lock_guard<mutex> lock(to_mutex);
-        if(to_send.empty()) return; //early exit on empty queue
+        if(to_send.empty()){
+            if(last) server->connection_finished();
+            return; //early exit on empty queue
+        }
         int mssg_cnt = min(BATCH_SIZE, to_send.size());
         send_buffer.assign(to_send.begin(), to_send.begin() + mssg_cnt);
         to_send.erase(to_send.begin(), to_send.begin() + mssg_cnt);
