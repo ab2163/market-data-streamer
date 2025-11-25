@@ -12,6 +12,8 @@ Socket::Socket(){
     if(socket_desc < 0) throw system_error(errno, generic_category(), "Error creating socket");
 }
 
+Socket::Socket(int existing_fd) : socket_desc(existing_fd) {}
+
 void Socket::bind(uint16_t port){
     int yes = 1;
     if(::setsockopt(socket_desc, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0){

@@ -13,6 +13,7 @@ class Socket{
 public:
     int socket_desc;
     Socket();
+    explicit Socket(int existing_fd);
     ~Socket();
     Socket(const Socket&) = delete; //forbid copying
     Socket& operator=(const Socket&) = delete; //forbid copying
