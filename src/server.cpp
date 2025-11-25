@@ -15,9 +15,9 @@ void Server::start_listening(){
     sockaddr_in peer{}; 
     socklen_t plen = sizeof(peer);
     int client_sock = ::accept(listen_conn.socket.socket_desc, (sockaddr*)&peer, &plen);
-    {
+    if(client_sock >= 0){
         lock_guard<mutex> lock(mssg_conns_mutex);
-        if(client_sock >= 0) mssg_conns.push_back(make_unique<MessageConnection>(client_sock, this));
+        mssg_conns.push_back(make_unique<MessageConnection>(client_sock, this));
         num_conns++;
     }
         

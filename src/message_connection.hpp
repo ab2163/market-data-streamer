@@ -22,6 +22,7 @@ public:
     deque<MboMsg> from_server;
     vector<MboMsg> send_buffer;
     vector<MboMsg> recv_buffer;
+    mutex send_mutex; //protects send_buffer + actual sending
     mutex to_mutex;
     mutex from_mutex;
     Socket socket;

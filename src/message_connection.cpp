@@ -59,8 +59,8 @@ bool MessageConnection::recv_frame(int file_desc, void *buf, uint32_t& bytes_rec
     uint32_t len_LE = 0;
     if(!read_n(file_desc, &len_LE, sizeof(len_LE))) return false;;
     uint32_t len = le32toh(len_LE);
-    if(len > (64u << 20)) //64 MiB sanity cap
-        throw runtime_error("Frame too large");
+    if(len > BATCH_SIZE * sizeof(MboMsg))
+        throw runtime_error("Frame too large for buffer");
     if(len){
         bool success = read_n(file_desc, buf, len);
         if(success) bytes_recv = len;
@@ -79,6 +79,7 @@ bool MessageConnection::push_onto_queue(vector<MboMsg> &messages){
 
 //sends a batch of messages from queue
 void MessageConnection::send_messages(bool last){
+    lock_guard<mutex> send_lock(send_mutex); //only one thread at a time
     {
         lock_guard<mutex> lock(to_mutex);
         if(to_send.empty()) return; //early exit on empty queue
@@ -92,9 +93,11 @@ void MessageConnection::send_messages(bool last){
 
 //gets messages from receive buffer and pushes onto queue if possible
 bool MessageConnection::recv_onto_queue(){
+    recv_buffer.resize(BATCH_SIZE);
     uint32_t bytes_recv = 0;
     if(!recv_frame(socket.socket_desc, recv_buffer.data(), bytes_recv)) return false;
     size_t num_msgs = bytes_recv / sizeof(MboMsg);
+    recv_buffer.resize(num_msgs);    //trim to actual number of messages
     lock_guard<mutex> lock(from_mutex);
     if(from_server.size() + num_msgs > MAX_QUEUE_SIZE) return false; //dump messages if not enough space
     from_server.insert(from_server.end(), recv_buffer.begin(), recv_buffer.begin() + num_msgs);
