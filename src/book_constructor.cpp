@@ -5,7 +5,7 @@ BookConstructor::BookConstructor(){
 }
 
 void BookConstructor::process_mbo_mssg(MboMsg &msg){
-    //tbd
+    order_book.update_book(msg);
 }
 
 void BookConstructor::build_order_book(){

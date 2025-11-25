@@ -1,9 +1,12 @@
 #include "order_book.hpp"
 
+#include <stdexcept>
+#include <algorithm>
+
 using namespace std;
 using namespace databento;
 
-void OrderBook::update_book(const MboMsg &msg){
+void OrderBook::update_book(MboMsg &msg){
     switch(msg.action){
         case Action::Clear:
             clear_book();
@@ -32,40 +35,74 @@ void OrderBook::clear_book(){
     ask_orders.clear();
 }
 
-SideLevels& OrderBook::get_side_levels(Side side){
+OrderBook::SideLevels& OrderBook::get_side_levels(Side side){
     if(side == Side::Bid) return bid_orders;
     else return ask_orders;
 }
 
 void OrderBook::add_order(MboMsg &msg){
-    if(msg.flags.IsTob()){
-        SideLevels &levels = get_side_levels(msg.side);
+    SideLevels &levels = get_side_levels(msg.side);
+    if(msg.flags.IsTob()){ //top-of-book "refresh"
         levels.clear();
-        if(msg.price != kUndefPrice){
-            LevelOrders level = {mbo};
-            levels.emplace(mbo.price, level);
+        if(msg.price != kUndefPrice){ //insert "synthetic" TOP order
+            LevelOrders level = {msg};
+            levels.emplace(msg.price, level);
         }
+    }
+    else{
+        levels[msg.price].emplace_back(msg); //put price into correct level
+        auto res = orders_by_id.emplace(msg.order_id, PriceAndSide{msg.price, msg.side}); //insert into orders by ID
+        if(!res.second) throw invalid_argument{ "Received duplicated order ID " + to_string(msg.order_id) };
     }
 }
 
-  void Add(db::MboMsg mbo) {
-    if (mbo.flags.IsTob()) {
-      SideLevels& levels = GetSideLevels(mbo.side);
-      levels.clear();
-      // kUndefPrice indicates the side's book should be cleared
-      // and doesn't represent an order that should be added
-      if (mbo.price != db::kUndefPrice) {
-        LevelOrders level = {mbo};
-        levels.emplace(mbo.price, level);
-      }
-    } else {
-      LevelOrders& level = GetOrInsertLevel(mbo.side, mbo.price);
-      level.emplace_back(mbo);
-      auto res = orders_by_id_.emplace(mbo.order_id,
-                                       PriceAndSide{mbo.price, mbo.side});
-      if (!res.second) {
-        throw std::invalid_argument{"Received duplicated order ID " +
-                                    std::to_string(mbo.order_id)};
-      }
+void OrderBook::cancel_order(MboMsg &msg){
+    auto prAndSide = orders_by_id[msg.order_id];
+    auto &levels = get_side_levels(msg.side);
+    auto &level = levels[prAndSide.price];
+    auto it = find_if(level.begin(), level.end(), [&](auto &level_msg){ return level_msg.order_id == msg.order_id; });
+    if(it == level.end()) throw invalid_argument{ "Could not locate order to cancel." };
+
+    if(it->size < msg.size) throw logic_error{ "Tried to cancel more size than existed." };
+    it->size -= msg.size;
+    if(it->size == 0){
+        orders_by_id.erase(msg.order_id);
+        level.erase(it);
+        if(level.empty()) levels.erase(prAndSide.price);
     }
-  }
+}
+
+void OrderBook::modify_order(MboMsg &msg){
+    auto it = orders_by_id.find(msg.order_id);
+    if(it == orders_by_id.end()){
+        //order not found treated as new order
+        add_order(msg);
+        return;
+    }
+    if(it->second.side != msg.side){
+        //order cannot change side
+        throw logic_error{ "Order changed side." };
+    }
+    auto prev_price = it->second.price;
+    auto &levels = get_side_levels(it->second.side);
+    auto &prev_level = levels[prev_price];
+    auto level_it = find_if(prev_level.begin(), prev_level.end(), 
+        [&](auto &level_msg){ return level_msg.order_id == msg.order_id; });
+    if(prev_price != msg.price){
+        //price changed means loses priority
+        it->second.price = msg.price;
+        prev_level.erase(level_it);
+        if(prev_level.empty()) levels.erase(prev_price);
+        levels[msg.price].emplace_back(msg);
+    }
+    else if(level_it->size < msg.size){
+        //size increased means loses priority
+        auto &level = prev_level;
+        level.erase(level_it);
+        level.emplace_back(msg);
+    }
+    else{
+        //otherwise same price with smaller size means keeps priority
+        level_it->size = msg.size;
+    }
+}

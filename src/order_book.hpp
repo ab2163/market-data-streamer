@@ -16,14 +16,16 @@ struct PriceAndSide{
 class OrderBook{
 public:
     using LevelOrders = vector<MboMsg>;
-    using Orders = unordered_map<uint64_t, PriceAndSide>;
-    using SideLevels = unordered_map<uint64_t, LevelOrders>;
+    using Orders = unordered_map<uint64_t, PriceAndSide>; //map from order id to price/side
+    using SideLevels = unordered_map<uint64_t, LevelOrders>; //map from price to orders at that price
     Orders orders_by_id;
     SideLevels bid_orders;
     SideLevels ask_orders;
-    void update_book(const MboMsg &msg);
+    void update_book(MboMsg &msg);
     void clear_book();
-    void add_order(MboMsg &mbo);
+    void add_order(MboMsg &msg);
+    void cancel_order(MboMsg &msg);
+    void modify_order(MboMsg &msg);
     SideLevels& get_side_levels(Side side);
 };
 

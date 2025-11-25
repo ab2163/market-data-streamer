@@ -27,5 +27,6 @@ add_executable(run_builder
     src/message_connection.cpp
     src/server.cpp
     src/thread_pool.cpp
+    src/order_book.cpp
 )
 target_link_libraries(run_builder PRIVATE databento::databento)
