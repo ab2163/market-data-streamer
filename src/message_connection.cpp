@@ -4,15 +4,17 @@
 
 using namespace std;
 
+//constructor used client-side and for server-side listener 
 MessageConnection::MessageConnection(){
     send_buffer.reserve(BATCH_SIZE);
     recv_buffer.reserve(BATCH_SIZE);
 }
 
-MessageConnection::MessageConnection(int socket_desc, Server *server) : server(server){
+//constructor used server-side
+MessageConnection::MessageConnection(int socket_desc, Server *server) : socket(socket_desc), server(server){
     send_buffer.reserve(BATCH_SIZE);
     recv_buffer.reserve(BATCH_SIZE);
-    socket.socket_desc = socket_desc;
+    socket.configure(Role::Server);
 }
 
 //function which writes n bytes over the connection

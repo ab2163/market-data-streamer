@@ -1,5 +1,5 @@
-#ifndef SOCKET
-#define SOCKET
+#ifndef SOCKET_HPP
+#define SOCKET_HPP
 
 #include <cstdint>
 #include <unistd.h>
@@ -34,4 +34,4 @@ public:
     void configure(Role socket_role);
 };
 
-#endif //SOCKET
+#endif //SOCKET_HPP
