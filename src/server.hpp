@@ -29,7 +29,7 @@ public:
     ~Server();
     void start_listening();
     void stop_listening();
-    void broadcast(vector<MboMsg> &messages);
+    void broadcast(vector<MboMsg> &messages, bool last);
     void connection_finished();
     void wait_to_finish();
 };

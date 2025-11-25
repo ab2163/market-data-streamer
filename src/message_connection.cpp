@@ -1,5 +1,5 @@
 #include "message_connection.hpp"
-
+#include "server.hpp"
 #include "tcp_common.hpp"
 
 using namespace std;
@@ -9,7 +9,7 @@ MessageConnection::MessageConnection(){
     recv_buffer.reserve(BATCH_SIZE);
 }
 
-MessageConnection::MessageConnection(int socket_desc, Server &server) : server(server){
+MessageConnection::MessageConnection(int socket_desc, Server *server) : server(server){
     send_buffer.reserve(BATCH_SIZE);
     recv_buffer.reserve(BATCH_SIZE);
     socket.socket_desc = socket_desc;
@@ -87,7 +87,7 @@ void MessageConnection::send_messages(bool last){
         to_send.erase(to_send.begin(), to_send.begin() + mssg_cnt);
     }
     send_frame(socket.socket_desc, send_buffer.data(), send_buffer.size()*sizeof(MboMsg));
-    if(last) server.connection_finished();
+    if(last) server->connection_finished();
 }
 
 //gets messages from receive buffer and pushes onto queue if possible

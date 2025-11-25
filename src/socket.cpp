@@ -13,6 +13,11 @@ Socket::Socket(){
 }
 
 void Socket::bind(uint16_t port){
+    int yes = 1;
+    if(::setsockopt(socket_desc, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0){
+        throw system_error(errno, generic_category(), "Error setting SO_REUSEADDR");
+    }
+
     sockaddr_in addr{}; addr.sin_family = AF_INET; //using IPv4
     addr.sin_addr.s_addr = htonl(INADDR_ANY); //bind to all network interfaces on this machine
     addr.sin_port = htons(port); //set port number (converted to big-endian)
@@ -24,8 +29,6 @@ void Socket::bind(uint16_t port){
 void Socket::listen(){
     if(::listen(socket_desc, 128) < 0) //socket is passive (listening) with up to 128 pending connections
         throw system_error(errno, generic_category(), "Error converting socket to listener");
-    int yes = 1;
-    ::setsockopt(socket_desc, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)); //enable quick rebinding after restarting
 }
 
 void Socket::connect(const char *host, uint16_t port){
