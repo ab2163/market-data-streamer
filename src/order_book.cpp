@@ -104,16 +104,19 @@ void OrderBook::cancel_order(MboMsg &msg){
         return;
     }
 
-    if(it->size < msg.size) it->size = 0; //if size to cancel > order size then clamp to 0 (don't crash)
-    it->size -= msg.size;
-    if(it->size == 0){
+    if(msg.size >= it->size){
+        //treat as full cancel
         orders_by_id.erase(id_it);
         level.erase(it);
         if(level.empty()){
             levels.erase(level_it);
-            recompute_px(msg);
+            recompute_px(prAndSide.side, prAndSide.price);
         }
+    }else{
+        //partial cancel
+        it->size -= msg.size;
     }
+
 }
 
 void OrderBook::modify_order(MboMsg &msg){
@@ -154,6 +157,7 @@ void OrderBook::modify_order(MboMsg &msg){
         prev_level.erase(level_it);
         if(prev_level.empty()){
             levels.erase(level_map_it);
+            recompute_px(prev_side, prev_price);
         }
         orders_by_id.erase(id_it);
         add_order(msg);
@@ -168,7 +172,7 @@ void OrderBook::modify_order(MboMsg &msg){
         prev_level.erase(level_it);
         if(prev_level.empty()){
             levels.erase(level_map_it);
-            recompute_px(msg);
+            recompute_px(prev_side, prev_price);
         }
         levels[msg.price].emplace_back(msg);
     }
@@ -194,13 +198,40 @@ PriceLevel OrderBook::get_price_level(int64_t price, const LevelOrders &level){
 }
 
 PriceLevel OrderBook::get_bid_level(){
-    if(bid_orders.empty()) return PriceLevel{};
-    return get_price_level(best_bid_px, bid_orders[best_bid_px]);
+    if(bid_orders.empty() || best_bid_px == kUndefPrice)
+        return PriceLevel{};
+
+    auto it = bid_orders.find(best_bid_px);
+    if(it == bid_orders.end()){
+        //best_px got stale – recompute
+        recompute_best_bid();
+        if(best_bid_px == kUndefPrice)
+            return PriceLevel{};
+
+        it = bid_orders.find(best_bid_px);
+        if(it == bid_orders.end())
+            return PriceLevel{};
+    }
+
+    return get_price_level(it->first, it->second);
 }
 
 PriceLevel OrderBook::get_ask_level(){
-    if(ask_orders.empty()) return PriceLevel{};
-    return get_price_level(best_ask_px, ask_orders[best_ask_px]);
+    if(ask_orders.empty() || best_ask_px == kUndefPrice)
+        return PriceLevel{};
+
+    auto it = ask_orders.find(best_ask_px);
+    if(it == ask_orders.end()){
+        recompute_best_ask();
+        if(best_ask_px == kUndefPrice)
+            return PriceLevel{};
+
+        it = ask_orders.find(best_ask_px);
+        if(it == ask_orders.end())
+            return PriceLevel{};
+    }
+
+    return get_price_level(it->first, it->second);
 }
 
 void OrderBook::print_BBO(MboMsg &msg){
@@ -212,12 +243,13 @@ void OrderBook::print_BBO(MboMsg &msg){
     cout << endl;
 }
 
-void OrderBook::recompute_px(MboMsg &msg){
-    if(msg.side == Side::Bid && msg.price == best_bid_px)
+void OrderBook::recompute_px(Side side, int64_t removed_price){
+    if(side == Side::Bid && removed_price == best_bid_px)
         recompute_best_bid();
-    else if(msg.side == Side::Ask && msg.price == best_ask_px)
+    else if(side == Side::Ask && removed_price == best_ask_px)
         recompute_best_ask();
 }
+
 
 void OrderBook::recompute_best_bid(){
     best_bid_px = kUndefPrice;

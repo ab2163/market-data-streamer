@@ -43,7 +43,7 @@ public:
     PriceLevel get_bid_level();
     PriceLevel get_ask_level();
     void print_BBO(MboMsg &msg);
-    void recompute_px(MboMsg &msg);
+    void recompute_px(Side side, int64_t removed_price);
     void recompute_best_bid();
     void recompute_best_ask();
 };
