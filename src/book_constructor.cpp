@@ -6,9 +6,13 @@ BookConstructor::BookConstructor(){
 }
 
 void BookConstructor::process_mbo_mssg(MboMsg &msg){
-    order_book.update_book(msg);
+    try{
+        order_book.update_book(msg);
+    }catch (const std::exception &e){
+        cerr << "OrderBook exception: " << e.what() << endl;
+    }
     timest_cnt++;
-    if(msg.flags.IsLast() && !(timest_cnt % 100))
+    if(msg.flags.IsLast() && !(timest_cnt % PRINT_FREQ))
         order_book.print_BBO(msg); //periodic outputting of BBO
 }
 

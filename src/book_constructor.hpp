@@ -10,6 +10,7 @@ using namespace databento;
 
 class BookConstructor{
 public:
+    static constexpr size_t PRINT_FREQ = 200; //frequency of timestamps over which to print output data
     int timest_cnt; //count of number of "timestamps" for which data has been sent
     Client client;
     OrderBook order_book;
