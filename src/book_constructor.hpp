@@ -10,6 +10,7 @@ using namespace databento;
 
 class BookConstructor{
 public:
+    int timest_cnt; //count of number of "timestamps" for which data has been sent
     Client client;
     OrderBook order_book;
     BookConstructor();

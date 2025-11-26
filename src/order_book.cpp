@@ -117,3 +117,33 @@ void OrderBook::modify_order(MboMsg &msg){
         level_it->size = msg.size;
     }
 }
+
+PriceLevel OrderBook::get_price_level(int64_t price, const LevelOrders &level){
+    PriceLevel res{price};
+    for(const auto &order : level){
+        if(!order.flags.IsTob()) res.count++;
+        res.size += order.size;
+    }
+    return res;
+}
+
+PriceLevel OrderBook::get_bid_level(){
+    if(bid_orders.empty()) return PriceLevel{};
+    auto level_it = bid_orders.rbegin();
+    return get_price_level(level_it->first, level_it->second);
+}
+
+PriceLevel OrderBook::get_ask_level(){
+    if(ask_orders.empty()) return PriceLevel{};
+    auto level_it = ask_orders.begin();
+    return get_price_level(level_it->first, level_it->second);
+}
+
+void OrderBook::print_BBO(MboMsg &msg){
+    PriceLevel bidPL = get_bid_level();
+    PriceLevel askPL = get_ask_level();
+    cout << "CLX5 Aggregated BBO | " << ToIso8601(msg.ts_recv) << endl;
+    cout << askPL.size << " @ " << pretty::Px{askPL.price} << " | " << askPL.count << " order(s)" << endl;
+    cout << bidPL.size << " @ " << pretty::Px{bidPL.price} << " | " << bidPL.count << " order(s)" << endl;
+    cout << endl;
+}
