@@ -20,6 +20,7 @@ public:
     static constexpr size_t BATCH_SIZE = 500;
     int loss_send; //number of messages lost in sending process
     int loss_recv; //number of messages lost in receiving process
+    int msgs_sent;
     deque<MboMsg> to_send;
     deque<MboMsg> from_server;
     vector<MboMsg> send_buffer;
