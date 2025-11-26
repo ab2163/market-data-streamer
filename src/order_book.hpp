@@ -27,7 +27,7 @@ class OrderBook{
 public:
     using LevelOrders = vector<MboMsg>;
     using Orders = unordered_map<uint64_t, PriceAndSide>; //map from order id to price/side
-    using SideLevels = map<uint64_t, LevelOrders>; //map from price to orders at that price
+    using SideLevels = map<int64_t, LevelOrders>; //map from price to orders at that price
     Orders orders_by_id;
     SideLevels bid_orders;
     SideLevels ask_orders;

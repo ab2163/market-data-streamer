@@ -67,8 +67,12 @@ void OrderBook::cancel_order(MboMsg &msg){
     auto &levels = get_side_levels(prAndSide.side);
 
     auto level_it = levels.find(prAndSide.price);
-    if(level_it == levels.end())
-        throw logic_error{ "Internal book inconsistency: level not found for order ID " + to_string(msg.order_id) };
+    //if the order exists in orders_by_id but not in levels then just remove from orders_by_id
+    //this may be because a previous add_order with IsTob() happened
+    if(level_it == levels.end()){ 
+        orders_by_id.erase(msg.order_id);
+        return;
+    }
     auto &level = level_it->second;
 
     auto it = find_if(level.begin(), level.end(), [&](auto &level_msg){ return level_msg.order_id == msg.order_id; });
@@ -99,6 +103,9 @@ void OrderBook::modify_order(MboMsg &msg){
     auto &prev_level = levels[prev_price];
     auto level_it = find_if(prev_level.begin(), prev_level.end(), 
         [&](auto &level_msg){ return level_msg.order_id == msg.order_id; });
+
+    if(level_it == prev_level.end()) return; //do not crash if trying to modify order which is not there
+
     if(prev_price != msg.price){
         //price changed means loses priority
         it->second.price = msg.price;
@@ -142,7 +149,7 @@ PriceLevel OrderBook::get_ask_level(){
 void OrderBook::print_BBO(MboMsg &msg){
     PriceLevel bidPL = get_bid_level();
     PriceLevel askPL = get_ask_level();
-    cout << "CLX5 Aggregated BBO | " << ToIso8601(msg.ts_recv) << endl;
+    cout << "CLX5 BBO | " << ToIso8601(msg.ts_recv) << endl;
     cout << askPL.size << " @ " << pretty::Px{askPL.price} << " | " << askPL.count << " order(s)" << endl;
     cout << bidPL.size << " @ " << pretty::Px{bidPL.price} << " | " << bidPL.count << " order(s)" << endl;
     cout << endl;
