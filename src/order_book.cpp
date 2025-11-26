@@ -35,6 +35,8 @@ void OrderBook::clear_book(){
     orders_by_id.clear();
     bid_orders.clear();
     ask_orders.clear();
+    best_bid_px = kUndefPrice;
+    best_ask_px = kUndefPrice;
 }
 
 OrderBook::SideLevels& OrderBook::get_side_levels(Side side){
@@ -46,20 +48,33 @@ void OrderBook::add_order(MboMsg &msg){
     SideLevels &levels = get_side_levels(msg.side);
     if(msg.flags.IsTob()){ //top-of-book "refresh"
         levels.clear();
+        if(msg.side == Side::Bid) best_bid_px = kUndefPrice;
+        else best_ask_px = kUndefPrice;
+
         if(msg.price != kUndefPrice){ //insert "synthetic" TOP order
             LevelOrders level = {msg};
             levels.emplace(msg.price, level);
+            if(msg.side == Side::Bid) best_bid_px = msg.price;
+            else best_ask_px = msg.price;
         }
     }
     else{
         if(orders_by_id.find(msg.order_id) != orders_by_id.end()){
-            //duplicate Add – ignore to avoid corrupting state further
+            //duplicate add – ignore to avoid corrupting state further
             cerr << "OrderBook: duplicate add for order: " << to_string(msg.order_id) << endl;
             return;
         }
 
         levels[msg.price].emplace_back(msg); //put price into correct level
         auto res = orders_by_id.emplace(msg.order_id, PriceAndSide{msg.price, msg.side}); //insert into orders by ID
+
+        if(msg.side == Side::Bid){
+            if(best_bid_px == kUndefPrice || msg.price > best_bid_px)
+                best_bid_px = msg.price;
+        }else if(msg.side == Side::Ask){
+            if(best_ask_px == kUndefPrice || msg.price < best_ask_px)
+                best_ask_px = msg.price;
+        }
     }
 }
 
@@ -94,7 +109,10 @@ void OrderBook::cancel_order(MboMsg &msg){
     if(it->size == 0){
         orders_by_id.erase(id_it);
         level.erase(it);
-        if(level.empty()) levels.erase(level_it);
+        if(level.empty()){
+            levels.erase(level_it);
+            recompute_px(msg);
+        }
     }
 }
 
@@ -148,7 +166,10 @@ void OrderBook::modify_order(MboMsg &msg){
         //price changed means loses priority
         id_it->second.price = msg.price;
         prev_level.erase(level_it);
-        if(prev_level.empty()) levels.erase(level_map_it);
+        if(prev_level.empty()){
+            levels.erase(level_map_it);
+            recompute_px(msg);
+        }
         levels[msg.price].emplace_back(msg);
     }
     else if(level_it->size < msg.size){
@@ -174,14 +195,12 @@ PriceLevel OrderBook::get_price_level(int64_t price, const LevelOrders &level){
 
 PriceLevel OrderBook::get_bid_level(){
     if(bid_orders.empty()) return PriceLevel{};
-    auto level_it = bid_orders.rbegin();
-    return get_price_level(level_it->first, level_it->second);
+    return get_price_level(best_bid_px, bid_orders[best_bid_px]);
 }
 
 PriceLevel OrderBook::get_ask_level(){
     if(ask_orders.empty()) return PriceLevel{};
-    auto level_it = ask_orders.begin();
-    return get_price_level(level_it->first, level_it->second);
+    return get_price_level(best_ask_px, ask_orders[best_ask_px]);
 }
 
 void OrderBook::print_BBO(MboMsg &msg){
@@ -191,4 +210,29 @@ void OrderBook::print_BBO(MboMsg &msg){
     cout << askPL.size << " @ " << pretty::Px{askPL.price} << " | " << askPL.count << " order(s)" << endl;
     cout << bidPL.size << " @ " << pretty::Px{bidPL.price} << " | " << bidPL.count << " order(s)" << endl;
     cout << endl;
+}
+
+void OrderBook::recompute_px(MboMsg &msg){
+    if(msg.side == Side::Bid && msg.price == best_bid_px)
+        recompute_best_bid();
+    else if(msg.side == Side::Ask && msg.price == best_ask_px)
+        recompute_best_ask();
+}
+
+void OrderBook::recompute_best_bid(){
+    best_bid_px = kUndefPrice;
+    for(const auto &kv : bid_orders){
+        int64_t px = kv.first;
+        if(best_bid_px == kUndefPrice || px > best_bid_px)
+            best_bid_px = px;
+    }
+}
+
+void OrderBook::recompute_best_ask(){
+    best_ask_px = kUndefPrice;
+    for(const auto &kv : ask_orders){
+        int64_t px = kv.first;
+        if(best_ask_px == kUndefPrice || px < best_ask_px)
+            best_ask_px = px;
+    }
 }

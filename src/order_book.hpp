@@ -27,7 +27,9 @@ class OrderBook{
 public:
     using LevelOrders = vector<MboMsg>;
     using Orders = unordered_map<uint64_t, PriceAndSide>; //map from order id to price/side
-    using SideLevels = map<int64_t, LevelOrders>; //map from price to orders at that price
+    using SideLevels = unordered_map<int64_t, LevelOrders>; //map from price to orders at that price
+    int64_t best_bid_px{kUndefPrice};
+    int64_t best_ask_px{kUndefPrice};
     Orders orders_by_id;
     SideLevels bid_orders;
     SideLevels ask_orders;
@@ -41,6 +43,9 @@ public:
     PriceLevel get_bid_level();
     PriceLevel get_ask_level();
     void print_BBO(MboMsg &msg);
+    void recompute_px(MboMsg &msg);
+    void recompute_best_bid();
+    void recompute_best_ask();
 };
 
 #endif //ORDER_BOOK
