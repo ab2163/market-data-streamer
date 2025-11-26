@@ -27,7 +27,7 @@ void OrderBook::update_book(MboMsg &msg){
         case Action::None:
             break;
         default:
-            throw invalid_argument{ string{"Unknown action: "} + ToString(msg.action) };
+            cerr << "Unknown action: " << ToString(msg.action) << endl;
     }
 }
 
@@ -52,9 +52,14 @@ void OrderBook::add_order(MboMsg &msg){
         }
     }
     else{
+        if(orders_by_id.find(msg.order_id) != orders_by_id.end()){
+            //duplicate Add – ignore to avoid corrupting state further
+            cerr << "OrderBook: duplicate add for order: " << to_string(msg.order_id) << endl;
+            return;
+        }
+
         levels[msg.price].emplace_back(msg); //put price into correct level
         auto res = orders_by_id.emplace(msg.order_id, PriceAndSide{msg.price, msg.side}); //insert into orders by ID
-        if(!res.second) throw invalid_argument{ "Received duplicated order ID " + to_string(msg.order_id) };
     }
 }
 
@@ -70,47 +75,80 @@ void OrderBook::cancel_order(MboMsg &msg){
     //if the order exists in orders_by_id but not in levels then just remove from orders_by_id
     //this may be because a previous add_order with IsTob() happened
     if(level_it == levels.end()){ 
-        orders_by_id.erase(msg.order_id);
+        orders_by_id.erase(id_it);
         return;
     }
     auto &level = level_it->second;
 
     auto it = find_if(level.begin(), level.end(), [&](auto &level_msg){ return level_msg.order_id == msg.order_id; });
-    if(it == level.end()) throw invalid_argument{ "Could not locate order to cancel. Order ID: " + to_string(msg.order_id) };
+    if(it == level.end()){
+        //mapping exists but we can't find the order in the level
+        //drop the mapping and move on (don't crash)
+        orders_by_id.erase(id_it);
+        if(level.empty()) levels.erase(level_it);
+        return;
+    }
 
-    if(it->size < msg.size) throw logic_error{ "Tried to cancel more size than existed." };
+    if(it->size < msg.size) it->size = 0; //if size to cancel > order size then clamp to 0 (don't crash)
     it->size -= msg.size;
     if(it->size == 0){
-        orders_by_id.erase(msg.order_id);
+        orders_by_id.erase(id_it);
         level.erase(it);
-        if(level.empty()) levels.erase(prAndSide.price);
+        if(level.empty()) levels.erase(level_it);
     }
 }
 
 void OrderBook::modify_order(MboMsg &msg){
-    auto it = orders_by_id.find(msg.order_id);
-    if(it == orders_by_id.end()){
+    auto id_it = orders_by_id.find(msg.order_id);
+    if(id_it == orders_by_id.end()){
         //order not found treated as new order
         add_order(msg);
         return;
     }
-    if(it->second.side != msg.side){
-        //order cannot change side
-        throw logic_error{ "Order changed side." };
+    
+    auto prev_side = id_it->second.side;
+    auto prev_price = id_it->second.price;
+
+    auto &levels = get_side_levels(prev_side);
+    auto level_map_it = levels.find(prev_price);
+
+    if(level_map_it == levels.end()){
+        //mapping exists but level doesn't – state is broken
+        //best effort: drop old mapping and treat this as fresh add
+        orders_by_id.erase(id_it);
+        add_order(msg);
+        return;
     }
-    auto prev_price = it->second.price;
-    auto &levels = get_side_levels(it->second.side);
-    auto &prev_level = levels[prev_price];
+
+    auto &prev_level = level_map_it->second;
     auto level_it = find_if(prev_level.begin(), prev_level.end(), 
         [&](auto &level_msg){ return level_msg.order_id == msg.order_id; });
 
-    if(level_it == prev_level.end()) return; //do not crash if trying to modify order which is not there
+    if(level_it == prev_level.end()){
+        //mapping exists but order missing – treat as fresh add
+        orders_by_id.erase(id_it);
+        add_order(msg);
+        return;
+    }
+
+    //if side changed, interpret it as "delete old + add new"
+    if(prev_side != msg.side){
+        prev_level.erase(level_it);
+        if(prev_level.empty()){
+            levels.erase(level_map_it);
+        }
+        orders_by_id.erase(id_it);
+        add_order(msg);
+        return;
+    }
+
+    //now we know: same side, existing order found
 
     if(prev_price != msg.price){
         //price changed means loses priority
-        it->second.price = msg.price;
+        id_it->second.price = msg.price;
         prev_level.erase(level_it);
-        if(prev_level.empty()) levels.erase(prev_price);
+        if(prev_level.empty()) levels.erase(level_map_it);
         levels[msg.price].emplace_back(msg);
     }
     else if(level_it->size < msg.size){
