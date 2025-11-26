@@ -12,5 +12,7 @@ int main(void){
     auto duration = chrono::duration_cast<std::chrono::microseconds>(end - start);
     cout << "Time taken: " << duration.count() << " microseconds\n";
     cout << "Finished builder script.\n";
+    int loss_recv = builder.client.msg_conn.loss_recv;
+    cout << "Num. messages lost in receiving: " << loss_recv << endl;
     return 0;
 }

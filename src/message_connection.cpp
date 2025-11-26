@@ -8,12 +8,14 @@ using namespace std;
 MessageConnection::MessageConnection(){
     send_buffer.reserve(BATCH_SIZE);
     recv_buffer.reserve(BATCH_SIZE);
+    loss_send = loss_recv = 0;
 }
 
 //constructor used server-side
 MessageConnection::MessageConnection(int socket_desc, Server *server) : socket(socket_desc), server(server){
     send_buffer.reserve(BATCH_SIZE);
     recv_buffer.reserve(BATCH_SIZE);
+    loss_send = loss_recv = 0;
     socket.configure(Role::Server);
 }
 
@@ -74,7 +76,10 @@ bool MessageConnection::recv_frame(int file_desc, void *buf, uint32_t& bytes_rec
 //pushes messages onto queue for client
 bool MessageConnection::push_onto_queue(vector<MboMsg> &messages){
     lock_guard<mutex> lock(to_mutex);
-    if(to_send.size() + messages.size() > MAX_QUEUE_SIZE) return false; //dump messages if not enough space
+    if(to_send.size() + messages.size() > MAX_QUEUE_SIZE){
+        loss_send += messages.size(); //for logging purposes
+        return false; //dump messages if not enough space
+    }
     to_send.insert(to_send.end(), messages.begin(), messages.end());
     return true;
 }
@@ -104,7 +109,10 @@ bool MessageConnection::recv_onto_queue(){
     size_t num_msgs = bytes_recv / sizeof(MboMsg);
     recv_buffer.resize(num_msgs);    //trim to actual number of messages
     lock_guard<mutex> lock(from_mutex);
-    if(from_server.size() + num_msgs > MAX_QUEUE_SIZE) return false; //dump messages if not enough space
+    if(from_server.size() + num_msgs > MAX_QUEUE_SIZE){
+        loss_recv += num_msgs; //for logging purposes
+        return false; //dump messages if not enough space
+    }
     from_server.insert(from_server.end(), recv_buffer.begin(), recv_buffer.begin() + num_msgs);
     return true;
 }

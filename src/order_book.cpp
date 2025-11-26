@@ -7,6 +7,8 @@ using namespace std;
 using namespace databento;
 
 void OrderBook::update_book(MboMsg &msg){
+    //cout << to_string(msg.order_id) << endl;
+
     switch(msg.action){
         case Action::Clear:
             clear_book();
@@ -57,11 +59,20 @@ void OrderBook::add_order(MboMsg &msg){
 }
 
 void OrderBook::cancel_order(MboMsg &msg){
-    auto prAndSide = orders_by_id[msg.order_id];
-    auto &levels = get_side_levels(msg.side);
-    auto &level = levels[prAndSide.price];
+    auto id_it = orders_by_id.find(msg.order_id);
+    //if(id_it == orders_by_id.end()) throw invalid_argument{ "Cancel for unknown order ID: " + to_string(msg.order_id) };
+    if(id_it == orders_by_id.end()) return; //allow false cancellations without causing crash
+    auto prAndSide = id_it->second;
+
+    auto &levels = get_side_levels(prAndSide.side);
+
+    auto level_it = levels.find(prAndSide.price);
+    if(level_it == levels.end())
+        throw logic_error{ "Internal book inconsistency: level not found for order ID " + to_string(msg.order_id) };
+    auto &level = level_it->second;
+
     auto it = find_if(level.begin(), level.end(), [&](auto &level_msg){ return level_msg.order_id == msg.order_id; });
-    if(it == level.end()) throw invalid_argument{ "Could not locate order to cancel." };
+    if(it == level.end()) throw invalid_argument{ "Could not locate order to cancel. Order ID: " + to_string(msg.order_id) };
 
     if(it->size < msg.size) throw logic_error{ "Tried to cancel more size than existed." };
     it->size -= msg.size;
