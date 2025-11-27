@@ -12,16 +12,19 @@ int main(int argc, char *argv[]){
 
     DataStreamer streamer(filepath);
     streamer.stream_messages();
-    int loss_send = streamer.server.mssg_conns[0]->loss_send;
 
-    /*
+    int tot_loss_send = 0;
+    int tot_msgs_inp = 0;
+    for(auto &conn : streamer.server.mssg_conns){
+        tot_loss_send += conn->loss_send;
+        tot_msgs_inp += conn->msgs_inp;
+    }
+    double tot_drop_rate = ((double) tot_loss_send) / tot_msgs_inp;
+
     cout << "\n===== SERVER STATS =====\n";
-    cout << "Total messages sent : " << total_msgs << "\n";
-    cout << "Total messages lost (recv)         : " << total_lost << "\n";
-    cout << "Average per-client freq (msg/s)    : " << avg_freq << "\n";
-    cout << "Global freq (msgs / max_duration)  : " << global_freq << " msg/s\n";
-    */
+    cout << "Total messages sent    : " << tot_msgs_inp << "\n";
+    cout << "Total messages dropped : " << tot_loss_send << "\n";
+    cout << "Message drop rate      : " << tot_drop_rate << " %\n";
 
-    cout << "Num. messages lost in sending: " << loss_send << endl;
     return 0;
 }

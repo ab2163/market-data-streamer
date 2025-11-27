@@ -19,7 +19,8 @@ class MessageConnection{
 public:
     int loss_send; //number of messages lost in sending process
     int loss_recv; //number of messages lost in receiving process
-    int msgs_sent;
+    int msgs_sent; //number of messages received onto queue from TCP
+    int msgs_inp; //number of messages pushed onto queue awaiting TCP transmission
     deque<MboMsg> to_send;
     deque<MboMsg> from_server;
     vector<MboMsg> send_buffer;

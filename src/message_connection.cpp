@@ -8,14 +8,14 @@ using namespace std;
 MessageConnection::MessageConnection(){
     send_buffer.reserve(cfg::BATCH_SIZE);
     recv_buffer.reserve(cfg::BATCH_SIZE);
-    loss_send = loss_recv = msgs_sent = 0;
+    loss_send = loss_recv = msgs_sent = msgs_inp = 0;
 }
 
 //constructor used server-side
 MessageConnection::MessageConnection(int socket_desc, Server *server) : socket(socket_desc), server(server){
     send_buffer.reserve(cfg::BATCH_SIZE);
     recv_buffer.reserve(cfg::BATCH_SIZE);
-    loss_send = loss_recv = msgs_sent = 0;
+    loss_send = loss_recv = msgs_sent = msgs_inp = 0;
     socket.configure(Role::Server);
 }
 
@@ -89,6 +89,7 @@ bool MessageConnection::push_onto_queue(vector<MboMsg> &messages){
         loss_send += messages.size(); //for logging purposes
         return false; //dump messages if not enough space
     }
+    msgs_inp += messages.size(); //for logging purposes
     to_send.insert(to_send.end(), messages.begin(), messages.end());
     return true;
 }
