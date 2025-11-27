@@ -7,7 +7,12 @@ using namespace std;
 using namespace databento;
 
 void OrderBook::update_book(MboMsg &msg){
-    //cout << to_string(msg.order_id) << endl;
+    //ignore messages without a valid side since
+    //these have no effect on order book
+    if(msg.side == Side::N){
+        cerr << "Side \"N\" specified with order: " << to_string(msg.order_id) << endl;
+        return;
+    }
 
     switch(msg.action){
         case Action::Clear:
@@ -22,6 +27,8 @@ void OrderBook::update_book(MboMsg &msg){
         case Action::Modify:
             modify_order(msg);
             break;
+        //ignore trades and fills since they do not affect the order book
+        //net effects of trades and fills are reported through cancels and modifys
         case Action::Trade:
         case Action::Fill:
         case Action::None:
@@ -39,6 +46,7 @@ void OrderBook::clear_book(){
     best_ask_px = kUndefPrice;
 }
 
+//important to check that the side is not "N" before calling this function
 OrderBook::SideLevels& OrderBook::get_side_levels(Side side){
     if(side == Side::Bid) return bid_orders;
     else return ask_orders;
