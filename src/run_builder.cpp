@@ -69,6 +69,11 @@ int main(int argc, char* argv[]){
             s.msgs_error = msgs_error;
             s.err_pct = err_pct;
             stats[i] = s;
+
+            if(i == 1){
+                cout << "\n===== SAMPLE BBO OUTPUT (CLIENT #1) =====\n";
+                builder.order_book.print_BBO();
+            }
         });
     }
 
@@ -86,7 +91,7 @@ int main(int argc, char* argv[]){
             << " err_pct=" << stats[i].err_pct
             << " rate=" << stats[i].processing_freq << " msg/s\n";
     }
-                    
+                 
     //aggregate stats
     long long total_msgs = 0;
     long long total_lost = 0;

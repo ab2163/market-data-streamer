@@ -14,7 +14,7 @@ void BookConstructor::process_mbo_mssg(MboMsg &msg){
     timest_cnt++;
     /*
     if(msg.flags.IsLast() && !(timest_cnt % cfg::PRINT_FREQ))
-        order_book.print_BBO(msg); //periodic outputting of BBO
+        order_book.print_BBO(); //periodic outputting of BBO
     */
 }
 
