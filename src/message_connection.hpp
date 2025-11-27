@@ -1,6 +1,7 @@
 #ifndef MESSAGE_CONNECTION
 #define MESSAGE_CONNECTION
 
+#include "config.hpp"
 #include "socket.hpp"
 
 #include <cstdint>
@@ -16,8 +17,6 @@ class Server;
 
 class MessageConnection{
 public:
-    static constexpr size_t MAX_QUEUE_SIZE = 50000;
-    static constexpr size_t BATCH_SIZE = 500;
     int loss_send; //number of messages lost in sending process
     int loss_recv; //number of messages lost in receiving process
     int msgs_sent;
@@ -32,9 +31,9 @@ public:
     Server *server;
     MessageConnection();
     MessageConnection(int socket_desc, Server *server);
-    void write_n(int file_desc, const void *buf, size_t n);
+    bool write_n(int file_desc, const void *buf, size_t n);
     bool read_n(int file_desc, void* buf, size_t n);
-    void send_frame(int file_desc, const void *data, uint32_t len);
+    bool send_frame(int file_desc, const void *data, uint32_t len);
     bool recv_frame(int file_desc, void *buf, uint32_t& bytes_recv);
     bool push_onto_queue(vector<MboMsg> &messages);
     void send_messages(bool last);
