@@ -9,8 +9,9 @@ using namespace databento;
 void OrderBook::update_book(MboMsg &msg){
     //ignore messages without a valid side since
     //these have no effect on order book
-    if(msg.side == Side::N){
-        cerr << "Side \"N\" specified with order: " << to_string(msg.order_id) << endl;
+    if(msg.side == Side::None){
+        //capture statistics - tbd
+        //cerr << "OrderBook: side \"N\" specified for order: " << to_string(msg.order_id) << endl;
         return;
     }
 
@@ -34,7 +35,7 @@ void OrderBook::update_book(MboMsg &msg){
         case Action::None:
             break;
         default:
-            cerr << "Unknown action: " << ToString(msg.action) << endl;
+            cerr << "OrderBook: unknown action: " << ToString(msg.action) << endl;
     }
 }
 
@@ -54,12 +55,15 @@ OrderBook::SideLevels& OrderBook::get_side_levels(Side side){
 
 void OrderBook::add_order(MboMsg &msg){
     SideLevels &levels = get_side_levels(msg.side);
-    if(msg.flags.IsTob()){ //top-of-book "refresh"
+
+    //some exchanges only provide TOB information in MBO data
+    //therefore for those exchanges clear half the book and replace value
+    if(msg.flags.IsTob()){
         levels.clear();
         if(msg.side == Side::Bid) best_bid_px = kUndefPrice;
         else best_ask_px = kUndefPrice;
 
-        if(msg.price != kUndefPrice){ //insert "synthetic" TOP order
+        if(msg.price != kUndefPrice){
             LevelOrders level = {msg};
             levels.emplace(msg.price, level);
             if(msg.side == Side::Bid) best_bid_px = msg.price;
@@ -88,8 +92,10 @@ void OrderBook::add_order(MboMsg &msg){
 
 void OrderBook::cancel_order(MboMsg &msg){
     auto id_it = orders_by_id.find(msg.order_id);
-    //if(id_it == orders_by_id.end()) throw invalid_argument{ "Cancel for unknown order ID: " + to_string(msg.order_id) };
-    if(id_it == orders_by_id.end()) return; //allow false cancellations without causing crash
+    if(id_it == orders_by_id.end()){
+        cerr << "OrderBook: false cancellation (1) for order: " << to_string(msg.order_id) << endl;
+        return; //allow false cancellations without causing crash
+    }
     auto prAndSide = id_it->second;
 
     auto &levels = get_side_levels(prAndSide.side);
@@ -97,7 +103,8 @@ void OrderBook::cancel_order(MboMsg &msg){
     auto level_it = levels.find(prAndSide.price);
     //if the order exists in orders_by_id but not in levels then just remove from orders_by_id
     //this may be because a previous add_order with IsTob() happened
-    if(level_it == levels.end()){ 
+    if(level_it == levels.end()){
+        cerr << "OrderBook: false cancellation (2) for order: " << to_string(msg.order_id) << endl;
         orders_by_id.erase(id_it);
         return;
     }
@@ -107,6 +114,7 @@ void OrderBook::cancel_order(MboMsg &msg){
     if(it == level.end()){
         //mapping exists but we can't find the order in the level
         //drop the mapping and move on (don't crash)
+        cerr << "OrderBook: false cancellation (3) for order: " << to_string(msg.order_id) << endl;
         orders_by_id.erase(id_it);
         if(level.empty()) levels.erase(level_it);
         return;
@@ -144,6 +152,7 @@ void OrderBook::modify_order(MboMsg &msg){
     if(level_map_it == levels.end()){
         //mapping exists but level doesn't – state is broken
         //best effort: drop old mapping and treat this as fresh add
+        cerr << "OrderBook: modification error (1) for order: " << to_string(msg.order_id) << endl;
         orders_by_id.erase(id_it);
         add_order(msg);
         return;
@@ -155,6 +164,7 @@ void OrderBook::modify_order(MboMsg &msg){
 
     if(level_it == prev_level.end()){
         //mapping exists but order missing – treat as fresh add
+        cerr << "OrderBook: modification error (2) for order: " << to_string(msg.order_id) << endl;
         orders_by_id.erase(id_it);
         add_order(msg);
         return;
