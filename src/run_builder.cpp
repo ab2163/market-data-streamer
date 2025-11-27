@@ -12,8 +12,10 @@ using namespace std::chrono;
 struct ClientStats{
     int msgs_sent = 0;
     int loss_recv = 0;
+    int msgs_error = 0;
     double duration_us = 0.0;      //microseconds
     double processing_freq = 0.0;  //messages per second
+    double err_pct = 0.0; //percentage of messages which were not correctly processed
 };
 
 int main(int argc, char* argv[]){
@@ -47,6 +49,7 @@ int main(int argc, char* argv[]){
 
             int loss_recv = builder.client.msg_conn.loss_recv;
             int msgs_sent = builder.client.msg_conn.msgs_sent;
+            int msgs_error = builder.order_book.msgs_error;
 
             double time_per_msg = (msgs_sent > 0)
                 ? total_us / msgs_sent
@@ -55,19 +58,17 @@ int main(int argc, char* argv[]){
             double processing_freq = (time_per_msg > 0.0)
                 ? 1'000'000.0 / time_per_msg
                 : 0.0;
+            
+            double err_pct = ((double) msgs_error) / msgs_sent;
 
             ClientStats s;
             s.msgs_sent = msgs_sent;
             s.loss_recv = loss_recv;
             s.duration_us = total_us;
             s.processing_freq = processing_freq;
-
+            s.msgs_error = msgs_error;
+            s.err_pct = err_pct;
             stats[i] = s;
-
-            cout << "[Client " << i << "] Finished. "
-                 << "msgs_sent=" << msgs_sent
-                 << " loss_recv=" << loss_recv
-                 << " freq=" << processing_freq << " msg/s\n";
         });
     }
 
@@ -76,6 +77,16 @@ int main(int argc, char* argv[]){
         t.join();
     }
 
+    cout << "\n===== PER-CLIENT STATS =====\n";
+    for(int i = 0; i < N; ++i){
+        cout << "[Client " << i << "] Finished. "
+            << "msgs_sent=" << stats[i].msgs_sent
+            << " loss_recv=" << stats[i].loss_recv
+            << " err=" << stats[i].msgs_error
+            << " err_pct=" << stats[i].err_pct
+            << " rate=" << stats[i].processing_freq << " msg/s\n";
+    }
+                    
     //aggregate stats
     long long total_msgs = 0;
     long long total_lost = 0;
@@ -96,7 +107,7 @@ int main(int argc, char* argv[]){
         ? (total_msgs * 1'000'000.0) / max_duration_us
         : 0.0;
 
-    cout << "\n===== AGGREGATED STATS =====\n";
+    cout << "\n===== AGGREGATED CLIENT STATS =====\n";
     cout << "Total messages sent by all clients : " << total_msgs << "\n";
     cout << "Total messages lost (recv)         : " << total_lost << "\n";
     cout << "Average per-client freq (msg/s)    : " << avg_freq << "\n";

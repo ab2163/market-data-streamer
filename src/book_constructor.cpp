@@ -12,8 +12,10 @@ void BookConstructor::process_mbo_mssg(MboMsg &msg){
         cerr << "OrderBook exception: " << e.what() << endl;
     }
     timest_cnt++;
+    /*
     if(msg.flags.IsLast() && !(timest_cnt % cfg::PRINT_FREQ))
         order_book.print_BBO(msg); //periodic outputting of BBO
+    */
 }
 
 void BookConstructor::build_order_book(){

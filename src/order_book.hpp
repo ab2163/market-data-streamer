@@ -30,6 +30,7 @@ public:
     using SideLevels = unordered_map<int64_t, LevelOrders>; //map from price to orders at that price
     int64_t best_bid_px{kUndefPrice};
     int64_t best_ask_px{kUndefPrice};
+    int msgs_error{0};
     Orders orders_by_id;
     SideLevels bid_orders;
     SideLevels ask_orders;
