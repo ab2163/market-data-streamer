@@ -12,24 +12,26 @@ MessageConnection::MessageConnection(){
 }
 
 //constructor used server-side
-MessageConnection::MessageConnection(int socket_desc, Server *server) : socket(socket_desc), server(server){
-    send_buffer.reserve(BATCH_SIZE);
-    recv_buffer.reserve(BATCH_SIZE);
-    loss_send = loss_recv = msgs_sent = 0;
+MessageConnection::MessageConnection(int socket_desc, Server *server) : 
+    MessageConnection(), socket(socket_desc), server(server){
     socket.configure(Role::Server);
 }
 
 //function which writes n bytes over the connection
-void MessageConnection::write_n(int file_desc, const void *buf, size_t n){
+bool MessageConnection::write_n(int file_desc, const void *buf, size_t n){
     const uint8_t *p = static_cast<const uint8_t*>(buf);
     size_t bytes_sent = 0;
     while(bytes_sent < n){
         ssize_t return_code = ::send(file_desc, p + bytes_sent, n - bytes_sent, 0);
         if(return_code < 0){
             if(errno == EINTR) continue;
-            throw system_error(errno, generic_category(), "Error in sending over TCP");
+            cerr << "MessageConnection: error in sending over TCP" << endl;
+            return false;
         }
-        if(return_code == 0) throw runtime_error("Error: connection closed by peer");
+        if(return_code == 0){
+            cerr << "MessageConnection: error (connection closed by peer)" << endl;
+            return false;
+        }
         bytes_sent += static_cast<size_t>(return_code);
     }
 }
@@ -42,7 +44,8 @@ bool MessageConnection::read_n(int file_desc, void* buf, size_t n){
         ssize_t return_code = ::recv(file_desc, p + bytes_recv, n - bytes_recv, 0);
         if(return_code < 0){
             if (errno == EINTR) continue;
-            throw system_error(errno, generic_category(), "Error in receiving over TCP");
+            cerr << "MessageConnection: error in receiving over TCP" << endl;
+            return false;
         }
         if(return_code == 0) return false;
         bytes_recv += static_cast<size_t>(return_code);
@@ -51,11 +54,12 @@ bool MessageConnection::read_n(int file_desc, void* buf, size_t n){
 }
 
 //send data as length-prefixed frame: [u32 length_le][payload bytes]
-void MessageConnection::send_frame(int file_desc, const void *data, uint32_t len){
+bool MessageConnection::send_frame(int file_desc, const void *data, uint32_t len){
     //use little-endian consistently
     uint32_t len_LE = htole32(len);
-    write_n(file_desc, &len_LE, sizeof(len_LE));
-    write_n(file_desc, data, len);
+    if(!write_n(file_desc, &len_LE, sizeof(len_LE))) return false;
+    if(!write_n(file_desc, data, len)) return false;
+    return true;
 }
 
 //receive data as length-prefixed frame
@@ -63,8 +67,10 @@ bool MessageConnection::recv_frame(int file_desc, void *buf, uint32_t& bytes_rec
     uint32_t len_LE = 0;
     if(!read_n(file_desc, &len_LE, sizeof(len_LE))) return false;;
     uint32_t len = le32toh(len_LE);
-    if(len > BATCH_SIZE * sizeof(MboMsg))
-        throw runtime_error("Frame too large for buffer");
+    if(len > BATCH_SIZE * sizeof(MboMsg)){
+        cerr << "MessageConnection: received frame too large for buffer" << endl;
+        return false;
+    }
     if(len){
         bool success = read_n(file_desc, buf, len);
         if(success) bytes_recv = len;
@@ -73,7 +79,7 @@ bool MessageConnection::recv_frame(int file_desc, void *buf, uint32_t& bytes_rec
     else return false;
 }
 
-//pushes messages onto queue for client
+//pushes messages onto queue awaiting sending to client(s)
 bool MessageConnection::push_onto_queue(vector<MboMsg> &messages){
     lock_guard<mutex> lock(to_mutex);
     if(to_send.size() + messages.size() > MAX_QUEUE_SIZE){
@@ -84,7 +90,7 @@ bool MessageConnection::push_onto_queue(vector<MboMsg> &messages){
     return true;
 }
 
-//sends a batch of messages from queue
+//sends a batch of messages from queue over TCP to client(s)
 void MessageConnection::send_messages(bool last){
     lock_guard<mutex> send_lock(send_mutex); //only one thread at a time
     {
@@ -101,7 +107,7 @@ void MessageConnection::send_messages(bool last){
     if(last) server->connection_finished();
 }
 
-//gets messages from receive buffer and pushes onto queue if possible
+//receives messages onto receive buffer and pushes onto queue if possible
 bool MessageConnection::recv_onto_queue(){
     recv_buffer.resize(BATCH_SIZE);
     uint32_t bytes_recv = 0;
