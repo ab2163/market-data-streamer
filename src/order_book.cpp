@@ -200,6 +200,15 @@ void OrderBook::modify_order(MboMsg &msg){
             recompute_px(prev_side, prev_price);
         }
         levels[msg.price].emplace_back(msg);
+
+        if(prev_side == Side::Bid){
+            if(best_bid_px == kUndefPrice || msg.price > best_bid_px)
+                best_bid_px = msg.price;
+        }
+        else if(prev_side == Side::Ask){
+            if(best_ask_px == kUndefPrice || msg.price < best_ask_px)
+                best_ask_px = msg.price;
+        }
     }
     else if(level_it->size < msg.size){
         //size increased means loses priority
