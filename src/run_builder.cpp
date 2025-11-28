@@ -1,3 +1,4 @@
+#include "config.hpp"
 #include "book_constructor.hpp"
 
 #include <chrono>
@@ -27,7 +28,11 @@ int main(int argc, char* argv[]){
             return 1;
         }
     }
-    cout << "Starting multi-client builder benchmark with N = " << N << "\n";
+
+    cout << "===== BENCHMARK CONFIG =====\n";
+    cout << "DBN File          : CLX5_mbo.dbn\n";
+    cout << "Num clients       : " << N << endl;
+    cout << "Server batch size : " << cfg::BATCH_SIZE << endl << endl;
 
     vector<ClientStats> stats(N);
     vector<thread> threads;
@@ -36,7 +41,7 @@ int main(int argc, char* argv[]){
     //launch N client threads
     for(int i = 0; i < N; ++i){
         threads.emplace_back([i, &stats](){
-            cout << "[Client " << i << "] Starting builder.\n";
+            cout << "[Client " << i << "] Starting order-book builder.\n";
 
             auto start = high_resolution_clock::now();
 
@@ -71,7 +76,7 @@ int main(int argc, char* argv[]){
             stats[i] = s;
 
             if(i == 1){
-                cout << "\n===== SAMPLE BBO OUTPUT (CLIENT #1) =====\n";
+                cout << "\n===== SAMPLE BBO OUTPUT (CLIENT 1) =====\n";
                 builder.order_book.print_BBO();
             }
         });
@@ -84,11 +89,14 @@ int main(int argc, char* argv[]){
 
     cout << "\n===== PER-CLIENT STATS =====\n";
     for(int i = 0; i < N; ++i){
+        char buf[64];
+        snprintf(buf, sizeof(buf), " err_pct=%.2f%%", stats[i].err_pct);
+
         cout << "[Client " << i << "] Finished. "
             << "msgs_sent=" << stats[i].msgs_sent
             << " loss_recv=" << stats[i].loss_recv
             << " err=" << stats[i].msgs_error
-            << " err_pct=" << stats[i].err_pct
+            << buf
             << " rate=" << stats[i].processing_freq << " msg/s\n";
     }
                  

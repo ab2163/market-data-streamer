@@ -262,9 +262,9 @@ PriceLevel OrderBook::get_ask_level(){
 void OrderBook::print_BBO(){
     PriceLevel bidPL = get_bid_level();
     PriceLevel askPL = get_ask_level();
-    cout << "CLX5 Best Bid and Offer:"  << endl;
-    cout << askPL.size << " @ " << pretty::Px{askPL.price} << " | " << askPL.count << " order(s)" << endl;
-    cout << bidPL.size << " @ " << pretty::Px{bidPL.price} << " | " << bidPL.count << " order(s)" << endl;
+    cout << "Instrument: CLX5"  << endl;
+    cout << "Best Ask : " << askPL.size << " @ " << pretty::Px{askPL.price} << " | " << askPL.count << " order(s)" << endl;
+    cout << "Best Bid : " << bidPL.size << " @ " << pretty::Px{bidPL.price} << " | " << bidPL.count << " order(s)" << endl;
 }
 
 void OrderBook::recompute_px(Side side, int64_t removed_price){
