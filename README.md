@@ -12,6 +12,8 @@ High-throughput C++ system that replays historical market data over TCP to multi
 
 * *Tests and benchmarks included*: Catch2 unit and integration tests and a benchmark script that runs with a user-selected number of clients.
 
+![Class diagram](/docs/system-diag.png)
+
 ## Benchmarks and Tests
 
 **Benchmark script** (`run_bench.sh`) runs system with user-selected number of clients and reports:
