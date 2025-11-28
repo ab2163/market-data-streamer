@@ -91,8 +91,6 @@ bool MessageConnection::push_onto_queue(vector<MboMsg> &messages){
     }
     msgs_inp += messages.size(); //for logging purposes
     to_send.insert(to_send.end(), messages.begin(), messages.end());
-    max_to_send_sz = to_send.size() > max_to_send_sz ? to_send.size() : max_to_send_sz;
-    cout << max_to_send_sz << endl;
     return true;
 }
 

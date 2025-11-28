@@ -21,8 +21,6 @@ public:
     int loss_recv; //number of messages lost in receiving process
     int msgs_sent; //number of messages received onto queue from TCP
     int msgs_inp; //number of messages pushed onto queue awaiting TCP transmission
-    int max_to_send_sz{0};
-    int cntr{0};
     deque<MboMsg> to_send;
     deque<MboMsg> from_server;
     vector<MboMsg> send_buffer;
