@@ -1,6 +1,6 @@
 #include "server.hpp"
 
-Server::Server() : thread_pool(thread::hardware_concurrency()){
+Server::Server() : thread_pool(1){
     running = false;
     num_conns = 0;
     finished_sending = false;
