@@ -37,11 +37,24 @@ add_executable(run_builder
 )
 target_link_libraries(run_builder PRIVATE databento::databento)
 
-add_executable(order_book_tests
-    tests/order_book_tests.cpp
+add_executable(test_order_book
+    tests/test_order_book.cpp
     src/order_book.cpp
 )
-target_link_libraries(order_book_tests
+target_link_libraries(test_order_book
+    PRIVATE
+        databento::databento
+        Catch2::Catch2WithMain
+)
+
+add_executable(test_message_connection
+    tests/test_message_connection.cpp
+    src/message_connection.cpp
+    src/socket.cpp
+    src/server.cpp
+    src/thread_pool.cpp
+)
+target_link_libraries(test_message_connection
     PRIVATE
         databento::databento
         Catch2::Catch2WithMain

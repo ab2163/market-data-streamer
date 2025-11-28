@@ -1,5 +1,6 @@
-#include <catch2/catch_test_macros.hpp>
 #include "../src/order_book.hpp"
+
+#include <catch2/catch_test_macros.hpp>
 
 //helper to construct an MboMsg with sane defaults.
 static MboMsg make_mbo(
