@@ -1,7 +1,7 @@
 #include "book_constructor.hpp"
 
 BookConstructor::BookConstructor(){
-    client.connect_to("127.0.0.1", 9000);
+    client.connect_to(cfg::DEFAULT_HOST, cfg::DEFAULT_PORT);
     timest_cnt = 0;
 }
 

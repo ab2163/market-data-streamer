@@ -1,6 +1,7 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
+#include "config.hpp"
 #include "message_connection.hpp"
 #include "thread_pool.hpp"
 

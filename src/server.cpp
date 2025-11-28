@@ -10,7 +10,7 @@ void Server::start_listening(){
     if(running) return;
     running = true;
 
-    listen_conn.socket.bind(9000);
+    listen_conn.socket.bind(cfg::DEFAULT_PORT);
     listen_conn.socket.listen();
     sockaddr_in peer{}; 
     socklen_t plen = sizeof(peer);
